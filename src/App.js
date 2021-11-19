@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import MoviesList from "./components/MoviesList";
+import axios from "axios";
 import { api } from "./api/swapi-api";
+import MoviesList from "./components/MoviesList";
+import AddMovie from "./components/AddMovie";
 import "./App.css";
 
 function App() {
@@ -12,16 +14,20 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await api.get("/films/");
-      const transformed = data.results.map((movieData) => {
-        return {
-          id: movieData.episode_id,
-          title: movieData.title,
-          openingText: movieData.opening_crawl,
-          releaseDate: movieData.release_date,
-        };
-      });
-      setMovies(transformed);
+      const { data } = await api.get(
+        "https://react-http-459de-default-rtdb.firebaseio.com/movies.json"
+      );
+      const loadedMovies = [];
+      for (const key in data) {
+        loadedMovies.push({
+          id: key,
+          title: data[key].body.title,
+          openingText: data[key].body.openingText,
+          releaseDate: data[key].body.releaseDate,
+        });
+      }
+      setMovies(loadedMovies);
+      console.log(data);
     } catch (e) {
       setError(e.message);
     }
@@ -32,17 +38,41 @@ function App() {
     fetchMovieHandler();
   }, [fetchMovieHandler]);
 
-  let content;
-  movies.length > 0
-    ? (content = <MoviesList movies={movies} />)
-    : error
-    ? (content = <p>{error}</p>)
-    : loading
-    ? (content = <p>Loading ... </p>)
-    : (content = <p>Found no movies</p>);
+  async function addMovieHandler(movie) {
+    try {
+      const { data } = await axios.post(
+        "https://react-http-459de-default-rtdb.firebaseio.com/movies.json",
+        {
+          body: movie,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  let content = <p>Found no movies.</p>;
+
+  if (movies.length > 0) {
+    content = <MoviesList movies={movies} />;
+  }
+
+  if (error) {
+    content = <p>{error}</p>;
+  }
+
+  if (loading) {
+    content = <p>Loading...</p>;
+  }
 
   return (
     <React.Fragment>
+      <section>
+        <AddMovie onAddMovie={addMovieHandler} />
+      </section>
       <section>
         <button onClick={fetchMovieHandler}>Fetch Movies</button>
       </section>
